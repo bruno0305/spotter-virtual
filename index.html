@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spotter Virtual · MVP</title>
+<style>
+:root{color-scheme:dark;--bg:#101317;--panel:#191e25;--line:#303742;--text:#f3f5ee;--muted:#aeb8c4;--accent:#d7fa70}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px system-ui,sans-serif}main,header>div{max-width:1180px;margin:auto;padding:0 24px}header{border-bottom:1px solid var(--line)}header>div{display:flex;align-items:center;justify-content:space-between;min-height:64px}strong.brand{font-size:19px}strong.brand span{color:var(--accent)}small,.muted{color:var(--muted)}h1{font-size:clamp(30px,5vw,52px);letter-spacing:-.05em;margin:34px 0 4px}p{line-height:1.5;margin:0 0 14px}h2{font-size:19px;margin:0 0 14px}.lead{margin-bottom:24px}.grid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(280px,1fr);gap:18px}.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;min-width:0}.preview{position:relative;aspect-ratio:16/10;background:#11161c;border-radius:10px;overflow:hidden;display:grid;place-items:center}.preview video,.preview canvas{position:absolute;width:100%;height:100%;object-fit:contain}.preview canvas{pointer-events:none}.preview p{position:relative;text-align:center;padding:20px;color:var(--muted);max-width:360px}.mode{position:absolute;z-index:1;top:12px;left:12px;border:1px solid var(--line);border-radius:6px;background:#101317;padding:5px 8px;font-size:12px}.feedback{min-height:50px;margin-top:12px;padding:12px;border-left:3px solid var(--accent);background:#222931;border-radius:4px}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0}.stats div{background:#11161c;padding:10px;border-radius:8px}.stats output{display:block;font-size:23px;font-weight:700;margin-top:3px}.controls{display:grid;gap:12px}.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.fields{display:grid;grid-template-columns:1fr 1fr;gap:8px}label{display:block}select,input[type=number],button{font:inherit;border:1px solid var(--line);border-radius:8px;background:#10151b;color:var(--text);padding:10px}select,input[type=number]{display:block;width:100%;margin-top:5px}button{cursor:pointer;font-weight:650}button.primary{background:var(--accent);color:#18200a;border-color:transparent}button:disabled{opacity:.45;cursor:default}button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}.below{margin:18px 0}.scroll{overflow:auto}table{width:100%;border-collapse:collapse;text-align:left;white-space:nowrap}td,th{padding:10px;border-bottom:1px solid var(--line)}details{margin:16px 0 30px}summary{cursor:pointer;font-weight:bold}details p{margin-top:10px}.result{border-top:1px solid var(--line);padding-top:12px}.result p{margin-bottom:0}[hidden]{display:none!important}@media(max-width:740px){main,header>div{padding:0 14px}.grid{grid-template-columns:1fr}h1{margin-top:22px}.panel{padding:14px}}
+</style>
+</head>
+<body>
+<header><div><strong class="brand">SPOTTER <span>VIRTUAL</span></strong></div></header>
+<main>
+<h1>Acompanhamento de treino</h1>
+<p class="lead muted">Acompanhe as repetições pela câmera e receba feedback por voz durante a série.</p>
+<div class="grid">
+<section class="panel" aria-labelledby="view-title">
+<h2 id="view-title">Monitor de movimento</h2>
+<div class="preview">
+<span class="mode" id="mode">Em espera</span>
+<p id="placeholder">Inicie pela câmera ou rode a demonstração com movimentos simulados.</p>
+<video id="camera" muted playsinline hidden></video>
+<canvas id="drawing" width="960" height="600" aria-label="Visualização das articulações detectadas"></canvas>
+</div>
+<div class="feedback" id="feedback" role="status">Configure sua série para começar.</div>
+<div class="stats">
+<div><small>Repetições</small><output id="reps">0</output></div>
+<div><small>Ângulo</small><output id="angle">—</output></div>
+<div><small>Alertas</small><output id="alerts">0</output></div>
+</div>
+<small id="metric"></small>
+</section>
+<section class="panel" aria-labelledby="series-title">
+<h2 id="series-title">Configurar série</h2>
+<form id="settings" class="controls">
+<label>Exercício<select id="exercise"><option value="squat">Agachamento livre</option><option value="bench">Supino</option><option value="deadlift">Levantamento terra</option></select></label>
+<div class="fields"><label>Carga atual (kg)<input type="number" id="load" min="0" max="500" step="0.5" value="0" required></label>
+<label>Meta de repetições<input type="number" id="target" min="1" max="30" step="1" value="8" required></label></div>
+<p class="muted" id="framing"></p>
+<div class="row"><button type="submit" id="start" class="primary">Ativar câmera</button><button type="button" id="demo">Rodar demonstração</button></div>
+<div class="row"><button type="button" id="finish" disabled>Encerrar série</button><label><input type="checkbox" id="voice" checked> Feedback por voz</label></div>
+<label><input type="checkbox" id="demo-partial" checked> Simular uma repetição parcial</label>
+<div class="result" id="result" hidden aria-live="polite"><h2>Resumo da série</h2><p id="summary"></p></div>
+</form>
+</section>
+</div>
+<section class="panel below" aria-labelledby="history-title">
+<h2 id="history-title">Histórico neste navegador</h2>
+<p class="muted" id="empty">As séries encerradas aparecem aqui.</p>
+<div class="scroll" id="history-wrap" hidden><table><thead><tr><th>Data</th><th>Exercício</th><th>Modo</th><th>Repetições</th><th>Alertas</th><th>Carga</th></tr></thead><tbody id="history"></tbody></table></div>
+<p class="muted" id="storage-note" hidden>O navegador bloqueou o armazenamento. O histórico ficará disponível apenas nesta aba.</p>
+</section>
+<details><summary>Como testar e apresentar</summary>
+<p><b>Sem câmera:</b> abra este arquivo no Chrome ou Edge, selecione um exercício e clique em <b>Rodar demonstração</b>. Com a opção de repetição parcial marcada, a simulação inclui um alerta. A série termina ao atingir a meta. Para comparar a progressão, informe uma carga de exemplo e rode outra série com a opção desmarcada. Para uma apresentação rápida, ajuste a meta para 3.</p>
+<p><b>Com câmera:</b> abra em HTTPS ou em localhost, aceite a permissão e aguarde o carregamento do modelo, que requer internet. Se necessário, use <code>py -m http.server 8000</code> no Windows ou <code>python3 -m http.server 8000</code> no terminal da pasta. Acesse <code>http://localhost:8000/Spotter-Virtual-MVP.html</code>. Faça a demonstração sem carga. A análise ocorre no navegador, sem enviar nem gravar vídeo.</p>
+<p><b>Escopo:</b> a câmera estima articulações e o app aplica limites angulares experimentais. São regras de demonstração, sem validação biomecânica. A carga é informada uma vez por série. A lógica de progressão em kg é ilustrada apenas em séries simuladas.</p>
+</details>
+</main>
+<script>
+'use strict';
+const byId = id => document.getElementById(id);
+const ui = Object.fromEntries(['mode','placeholder','camera','drawing','feedback','reps','angle','alerts','metric','settings','demo-partial','exercise','load','target','framing','start','demo','finish','voice','result','summary','empty','history-wrap','history','storage-note'].map(id => [id,byId(id)]));
+const context = ui.drawing.getContext('2d');
+const exercises = {
+  squat: { name:'Agachamento livre', joint:'joelho', ids:[23,25,27], enter:108, exit:155, partial:136, order:['exit','enter'], framing:'Posicione a câmera de lado. Quadril, joelho e tornozelo devem aparecer.' },
+  bench: { name:'Supino', joint:'cotovelo', ids:[11,13,15], enter:102, exit:150, partial:130, order:['exit','enter'], framing:'Enquadre ombro, cotovelo e punho de um lado do corpo.' },
+  deadlift: { name:'Levantamento terra', joint:'quadril', ids:[11,23,25], enter:119, exit:155, partial:140, order:['enter','exit'], framing:'Posicione a câmera de lado. Ombro, quadril e joelho devem aparecer.' }
+};
+const edges = [[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24],[23,25],[25,27],[24,26],[26,28]];
+const historyKey = 'spotter-virtual-mvp-v1';
+let history = [];
+let session = null;
+let modelPromise;
+
+try {
+  const saved = JSON.parse(localStorage.getItem(historyKey) || '[]');
+  if (Array.isArray(saved)) history = saved;
+} catch {
+  ui['storage-note'].hidden = false;
+}
+
+function renderHistory() {
+  ui.history.replaceChildren();
+  ui.empty.hidden = history.length > 0;
+  ui['history-wrap'].hidden = history.length === 0;
+  for (const entry of history) {
+    const row = ui.history.insertRow();
+    const values = [entry.when, entry.exercise, entry.mode, entry.reps, entry.alerts, entry.load + ' kg'];
+    for (const value of values) row.insertCell().textContent = value;
+  }
+}
+
+function updateExercise() {
+  const config = exercises[ui.exercise.value];
+  ui.framing.textContent = config.framing;
+  ui.metric.textContent = 'Ângulo estimado do ' + config.joint + ' nas articulações visíveis.';
+}
+function updateUI() {
+  for (const control of [ui.exercise,ui.load,ui.target,ui.start,ui.demo,ui['demo-partial']]) control.disabled = Boolean(session);
+  ui.finish.disabled = !session;
+  ui.finish.textContent = session?.ready ? 'Encerrar série' : session ? 'Cancelar' : 'Encerrar série';
+  ui.mode.textContent = session?.mode || 'Em espera';
+  ui.placeholder.hidden = Boolean(session?.ready);
+}
+function speak(message) {
+  if (!ui.voice.checked || !('speechSynthesis' in window)) return;
+  speechSynthesis.cancel();
+  const voice = new SpeechSynthesisUtterance(message);
+  voice.lang = 'pt-BR';
+  speechSynthesis.speak(voice);
+}
+function feedback(message, audio = false) {
+  if (ui.feedback.textContent !== message) ui.feedback.textContent = message;
+  if (audio) speak(message);
+}
+function begin(mode) {
+  if (session || !ui.settings.reportValidity()) return null;
+  session = {
+    mode, config:exercises[ui.exercise.value], load:ui.load.valueAsNumber, target:ui.target.valueAsNumber,
+    reps:0, alerts:0, phase:'waiting', excursion:false, lastAlert:-Infinity
+  };
+  ui.reps.value = 0;
+  ui.alerts.value = 0;
+  ui.angle.value = '—';
+  ui.result.hidden = true;
+  updateUI();
+  return session;
+}
+function stop(current) {
+  cancelAnimationFrame(current.frame);
+  current.stream?.getTracks().forEach(track => track.stop());
+  ui.camera.pause();
+  ui.camera.srcObject = null;
+  ui.camera.hidden = true;
+  context.clearRect(0,0,ui.drawing.width,ui.drawing.height);
+  ui.angle.value = '—';
+  session = null;
+  updateUI();
+}
+function finish(current) {
+  if (current !== session) return;
+  stop(current);
+  if (!current.ready) {
+    feedback('Inicialização cancelada.');
+    return;
+  }
+  const { config, mode, reps, target, alerts, load } = current;
+  feedback('Série encerrada.', true);
+  const progress = reps >= target && alerts === 0 && load > 0 ? Math.min(load + 0.5,500) : load;
+  let next = ' Revise a carga da próxima série com seu instrutor.';
+  if (mode === 'Simulação') {
+    next = ' Carga no exemplo de progressão: ' + progress.toLocaleString('pt-BR') + ' kg.';
+  }
+  ui.summary.textContent = reps + ' de ' + target + ' repetições · ' + alerts + ' alerta(s).' + next;
+  ui.result.hidden = false;
+  history.unshift({ when:new Date().toLocaleString('pt-BR'), exercise:config.name, mode, reps, alerts, load });
+  history = history.slice(0,20);
+  try {
+    localStorage.setItem(historyKey,JSON.stringify(history));
+  } catch {
+    ui['storage-note'].hidden = false;
+  }
+  renderHistory();
+}
+
+function updateMovement(current, degrees, now) {
+  const { config } = current;
+  const [start,end] = config.order;
+  let position = 'middle';
+  if (degrees >= config.exit) position = 'exit';
+  if (degrees <= config.enter) position = 'enter';
+  if (current.phase === 'waiting') {
+    if (position === start) {
+      current.phase = 'outbound';
+      feedback('Movimento detectado. Inicie a repetição.');
+    }
+    return;
+  }
+  if (current.phase === 'outbound') {
+    const extendedStart = start === 'exit';
+    current.excursion ||= extendedStart ? degrees <= config.partial : degrees >= config.partial;
+    if (position === end) {
+      current.phase = 'returning';
+      return;
+    }
+    if (position === start && current.excursion) {
+      current.excursion = false;
+      current.alerts++;
+      ui.alerts.value = current.alerts;
+      const allowAudio = now - current.lastAlert >= 2400;
+      if (allowAudio) current.lastAlert = now;
+      feedback('Amplitude parcial detectada.', allowAudio);
+    }
+    return;
+  }
+  if (position === start) {
+    current.phase = 'outbound';
+    current.excursion = false;
+    current.reps++;
+    ui.reps.value = current.reps;
+    if (current.reps === current.target) {
+      finish(current);
+      return;
+    }
+    feedback('Repetição ' + current.reps + ' registrada.');
+  }
+}
+function visible(point) {
+  return point && (point.visibility ?? 1) >= 0.55 &&
+    point.x >= 0 && point.x <= 1 && point.y >= 0 && point.y <= 1;
+}
+function renderPose(current, landmarks, width, height, now) {
+  const canvas = ui.drawing;
+  if (canvas.width !== width || canvas.height !== height) {
+    canvas.width = width;
+    canvas.height = height;
+  }
+  context.clearRect(0,0,width,height);
+  if (current.mode === 'Simulação') drawDemoEquipment(ui.exercise.value,landmarks);
+  context.strokeStyle = '#d7fa70';
+  context.fillStyle = '#f3f5ee';
+  context.lineWidth = Math.max(2,width / 240);
+  for (const [a,b] of edges) {
+    const left = landmarks[a], right = landmarks[b];
+    if (!visible(left) || !visible(right)) continue;
+    context.beginPath();
+    context.moveTo(left.x * width, left.y * height);
+    context.lineTo(right.x * width, right.y * height);
+    context.stroke();
+  }
+  if (current.mode === 'Simulação') {
+    const head = landmarks[0];
+    const shoulder = landmarks[11];
+    context.beginPath();
+    context.moveTo(shoulder.x*width,shoulder.y*height);
+    context.lineTo(head.x*width,head.y*height);
+    context.stroke();
+  }
+  for (const [index,point] of landmarks.entries()) {
+    if (!visible(point)) continue;
+    context.beginPath();
+    context.arc(point.x * width,point.y * height,current.mode === 'Simulação' && index === 0 ? 21 : Math.max(3,width / 180),0,Math.PI * 2);
+    context.fill();
+  }
+
+  const { ids } = current.config;
+  const candidates = [ids,ids.map(id => id + 1)].map(side => side.map(id => landmarks[id]));
+  const reliable = candidates.filter(points => points.every(visible));
+  const quality = points => Math.min(...points.map(point => point.visibility ?? 1));
+  reliable.sort((a,b) => quality(b) - quality(a));
+  if (!reliable.length) {
+    ui.angle.value = '—';
+    current.phase = 'waiting';
+    current.excursion = false;
+    current.smoothed = undefined;
+    feedback('Ajuste o enquadramento para mostrar as articulações.');
+    return;
+  }
+  const [a,b,c] = reliable[0];
+  const x1 = (a.x - b.x) * width, y1 = (a.y - b.y) * height;
+  const x2 = (c.x - b.x) * width, y2 = (c.y - b.y) * height;
+  if (Math.min(Math.hypot(x1,y1),Math.hypot(x2,y2)) < 4) {
+    ui.angle.value = '—';
+    current.phase = 'waiting';
+    current.excursion = false;
+    current.smoothed = undefined;
+    feedback('Mostre as articulações de lado para estimar o ângulo.');
+    return;
+  }
+  const degrees = Math.atan2(Math.abs(x1*y2 - y1*x2),x1*x2 + y1*y2) * 180 / Math.PI;
+  current.smoothed = current.smoothed === undefined ? degrees : current.smoothed * 0.45 + degrees * 0.55;
+  ui.angle.value = Math.round(current.smoothed) + '°';
+  updateMovement(current,current.smoothed,now);
+}
+
+function simulatedPose(kind, degrees) {
+  const radians = Math.PI / 180;
+  const bend = (180 - degrees) * radians;
+  const pose = [];
+  const set = (id, x, y) => { pose[id] = {x:x/960, y:y/600, visibility:1}; };
+  const offset = (id, from, x, y) => set(id, pose[from].x * 960 + x, pose[from].y * 600 + y);
+
+  if (kind === 'bench') {
+    // Bench stays fixed. The elbow drops toward the feet while the forearm stays upright.
+    set(11,390,340);
+    set(23,552,355);
+    set(25,625,366);
+    set(27,595,507);
+    offset(13,11,88*Math.sin(bend),-88*Math.cos(bend));
+    offset(15,13,0,-85);
+    set(0,342,335);
+  } else if (kind === 'deadlift') {
+    // Split hip flexion between the thigh and torso. The hips move down and back.
+    const torsoTilt = bend * 0.60;
+    const thighTilt = bend - torsoTilt;
+    const shinTilt = bend * 0.21;
+    set(27,480,507);
+    offset(25,27,120*Math.sin(shinTilt),-120*Math.cos(shinTilt));
+    offset(23,25,-127*Math.sin(thighTilt),-127*Math.cos(thighTilt));
+    offset(11,23,154*Math.sin(torsoTilt),-154*Math.cos(torsoTilt));
+    const barX = 535;
+    const armDrop = Math.sqrt(212**2 - (barX - pose[11].x*960)**2);
+    set(15,barX,pose[11].y*600 + armDrop);
+    set(13,(pose[11].x*960 + barX)/2,pose[11].y*600 + armDrop/2);
+    offset(0,11,40*Math.sin(torsoTilt) + 5,-40*Math.cos(torsoTilt));
+  } else {
+    // Feet stay planted. The knees move forward and the hips move back and down.
+    const shinTilt = bend * 0.26;
+    const thighTilt = bend - shinTilt;
+    const torsoTilt = bend * 0.46;
+    set(27,500,507);
+    offset(25,27,122*Math.sin(shinTilt),-122*Math.cos(shinTilt));
+    offset(23,25,-132*Math.sin(thighTilt),-132*Math.cos(thighTilt));
+    offset(11,23,154*Math.sin(torsoTilt),-154*Math.cos(torsoTilt));
+    offset(13,11,-43,59);
+    offset(15,11,-16,3);
+    offset(0,11,38*Math.sin(torsoTilt) + 6,-38*Math.cos(torsoTilt));
+  }
+  return pose;
+}
+
+function drawDemoEquipment(kind, pose) {
+  const x = id => pose[id].x * 960;
+  const y = id => pose[id].y * 600;
+  context.fillStyle = '#657282';
+  context.fillRect(220,525,520,3);
+  context.fillStyle = '#c3ccd5';
+  context.fillRect(x(27)-14,513,49,12);
+
+  if (kind === 'bench') {
+    context.fillStyle = '#657282';
+    context.fillRect(303,371,290,13);
+    context.fillRect(329,384,12,141);
+    context.fillRect(552,384,12,141);
+  }
+
+  // The visible end of the bar follows the grip in the side view.
+  const plateX = x(15);
+  const plateY = y(15);
+  context.fillStyle = '#576678';
+  context.beginPath();
+  context.arc(plateX,plateY,kind === 'deadlift' ? 54 : 20,0,Math.PI*2);
+  context.fill();
+}
+
+function startDemo() {
+  const current = begin('Simulação');
+  if (!current) return;
+  current.ready = true;
+  updateUI();
+  feedback('Demonstração iniciada.', true);
+  const config = current.config;
+  const high = 174;
+  const low = config === exercises.deadlift ? 60 : config.enter - 19;
+  const endpoints = config.order[0] === 'exit' ? [high,low] : [low,high];
+  const partial = (config.partial + config[config.order[1]]) / 2;
+  const includePartial = ui['demo-partial'].checked;
+  const start = performance.now();
+  function frame(now) {
+    if (session !== current) return;
+    const elapsed = Math.max(0,now-start-350);
+    const cycle = Math.floor(elapsed / 1600);
+    const ratio = (elapsed % 1600) / 1600;
+    const travel = ratio < 0.1 || ratio >= 0.9 ? 0 : (1 - Math.cos((ratio-0.1)/0.8*2*Math.PI))/2;
+    const degrees = endpoints[0] + ((includePartial && cycle === 0 ? partial : endpoints[1])-endpoints[0])*travel;
+    renderPose(current,simulatedPose(ui.exercise.value,degrees),960,600,now);
+    if (session === current) current.frame = requestAnimationFrame(frame);
+  }
+  current.frame = requestAnimationFrame(frame);
+}
+
+function loadModel() {
+  if (!modelPromise) {
+    const base = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21';
+    modelPromise = (async () => {
+      const { FilesetResolver,PoseLandmarker } = await import(base + '/vision_bundle.mjs');
+      const vision = await FilesetResolver.forVisionTasks(base + '/wasm');
+      return PoseLandmarker.createFromOptions(vision,{
+        baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task'},
+        runningMode:'VIDEO', numPoses:1
+      });
+    })().catch(error => { modelPromise = undefined; throw error; });
+  }
+  return modelPromise;
+}
+async function startCamera(event) {
+  event.preventDefault();
+  const current = begin('Câmera ao vivo');
+  if (!current) return;
+  if (!navigator.mediaDevices?.getUserMedia) {
+    stop(current);
+    feedback('Abra em HTTPS ou localhost para acessar a câmera. A simulação já está disponível.');
+    return;
+  }
+  feedback('Autorize o acesso à câmera no navegador.');
+  let stage = 'camera';
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:640},height:{ideal:480}}
+    });
+    if (session !== current) {
+      stream.getTracks().forEach(track => track.stop());
+      return;
+    }
+    current.stream = stream;
+    feedback('Carregando o modelo de pose. Aguarde alguns segundos.');
+    stage = 'model';
+    let timeout;
+    const model = await Promise.race([loadModel(),new Promise((_,reject) => {
+      timeout = setTimeout(() => reject(new Error('Model timeout')),25000);
+    })]).finally(() => clearTimeout(timeout));
+    if (session !== current) return;
+
+    stage = 'camera';
+    ui.camera.srcObject = stream;
+    await ui.camera.play();
+    if (session !== current) return;
+    ui.camera.hidden = false;
+    current.ready = true;
+    updateUI();
+    feedback('Posicione-se de lado, com as articulações visíveis.', true);
+    let previous = -1;
+    let lastFrame = -Infinity;
+    function frame(now) {
+      if (session !== current) return;
+      if (stream.getVideoTracks().every(track => track.readyState === 'ended')) {
+        finish(current);
+        feedback('A câmera foi desconectada. Série encerrada.');
+        return;
+      }
+      try {
+        if (ui.camera.readyState >= 2 && previous !== ui.camera.currentTime && now-lastFrame >= 65) {
+          previous = ui.camera.currentTime;
+          lastFrame = now;
+          const {landmarks} = model.detectForVideo(ui.camera,now);
+          renderPose(current,landmarks[0] || [],ui.camera.videoWidth,ui.camera.videoHeight,now);
+        }
+      } catch {
+        finish(current);
+        feedback('A análise da câmera foi interrompida. A demonstração está disponível.');
+        return;
+      }
+      if (session === current) current.frame = requestAnimationFrame(frame);
+    }
+    current.frame = requestAnimationFrame(frame);
+  } catch (error) {
+    if (session !== current) return;
+    stop(current);
+    if (stage === 'model') {
+      if (error.message === 'Model timeout') modelPromise = undefined;
+      feedback('O modelo não carregou. Verifique a internet ou rode a demonstração.');
+    } else {
+      feedback('Não foi possível abrir a câmera. Confira a permissão, feche outros aplicativos de vídeo ou use a demonstração.');
+    }
+  }
+}
+
+ui.exercise.addEventListener('change',updateExercise);
+ui.settings.addEventListener('submit',startCamera);
+ui.demo.addEventListener('click',startDemo);
+ui.finish.addEventListener('click',() => { if (session) finish(session); });
+ui.voice.addEventListener('change',() => { if (!ui.voice.checked) window.speechSynthesis?.cancel(); });
+window.addEventListener('pagehide',() => { if (session) stop(session); });
+updateExercise();
+renderHistory();
+</script>
+</body>
+</html>
