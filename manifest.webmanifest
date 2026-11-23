@@ -1,0 +1,15 @@
+{
+  "name": "Spotter Virtual",
+  "short_name": "Spotter",
+  "description": "Acompanhamento de treinos de musculação com visão computacional, correção por voz e progressão automática de carga.",
+  "lang": "pt-BR",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0d1014",
+  "theme_color": "#0d1014",
+  "icons": [
+    { "src": "assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

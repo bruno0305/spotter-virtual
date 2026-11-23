@@ -1,468 +1,264 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Spotter Virtual · MVP</title>
-<style>
-:root{color-scheme:dark;--bg:#101317;--panel:#191e25;--line:#303742;--text:#f3f5ee;--muted:#aeb8c4;--accent:#d7fa70}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px system-ui,sans-serif}main,header>div{max-width:1180px;margin:auto;padding:0 24px}header{border-bottom:1px solid var(--line)}header>div{display:flex;align-items:center;justify-content:space-between;min-height:64px}strong.brand{font-size:19px}strong.brand span{color:var(--accent)}small,.muted{color:var(--muted)}h1{font-size:clamp(30px,5vw,52px);letter-spacing:-.05em;margin:34px 0 4px}p{line-height:1.5;margin:0 0 14px}h2{font-size:19px;margin:0 0 14px}.lead{margin-bottom:24px}.grid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(280px,1fr);gap:18px}.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;min-width:0}.preview{position:relative;aspect-ratio:16/10;background:#11161c;border-radius:10px;overflow:hidden;display:grid;place-items:center}.preview video,.preview canvas{position:absolute;width:100%;height:100%;object-fit:contain}.preview canvas{pointer-events:none}.preview p{position:relative;text-align:center;padding:20px;color:var(--muted);max-width:360px}.mode{position:absolute;z-index:1;top:12px;left:12px;border:1px solid var(--line);border-radius:6px;background:#101317;padding:5px 8px;font-size:12px}.feedback{min-height:50px;margin-top:12px;padding:12px;border-left:3px solid var(--accent);background:#222931;border-radius:4px}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0}.stats div{background:#11161c;padding:10px;border-radius:8px}.stats output{display:block;font-size:23px;font-weight:700;margin-top:3px}.controls{display:grid;gap:12px}.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.fields{display:grid;grid-template-columns:1fr 1fr;gap:8px}label{display:block}select,input[type=number],button{font:inherit;border:1px solid var(--line);border-radius:8px;background:#10151b;color:var(--text);padding:10px}select,input[type=number]{display:block;width:100%;margin-top:5px}button{cursor:pointer;font-weight:650}button.primary{background:var(--accent);color:#18200a;border-color:transparent}button:disabled{opacity:.45;cursor:default}button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}.below{margin:18px 0}.scroll{overflow:auto}table{width:100%;border-collapse:collapse;text-align:left;white-space:nowrap}td,th{padding:10px;border-bottom:1px solid var(--line)}details{margin:16px 0 30px}summary{cursor:pointer;font-weight:bold}details p{margin-top:10px}.result{border-top:1px solid var(--line);padding-top:12px}.result p{margin-bottom:0}[hidden]{display:none!important}@media(max-width:740px){main,header>div{padding:0 14px}.grid{grid-template-columns:1fr}h1{margin-top:22px}.panel{padding:14px}}
-</style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Spotter Virtual · Seu spotter com IA</title>
+<meta name="description" content="Spotter Virtual: acompanhamento de treinos de musculação com visão computacional, correção de postura por voz e progressão automática de carga.">
+<meta name="theme-color" content="#0d1014">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icon.svg">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Spotter">
+<link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-<header><div><strong class="brand">SPOTTER <span>VIRTUAL</span></strong></div></header>
+<a class="skip" href="#treinar">Pular para o treino</a>
+
+<header class="topbar">
+  <div class="wrap topbar-inner">
+    <a class="brand" href="#inicio" aria-label="Spotter Virtual, início">
+      <img src="assets/icon.svg" alt="" width="28" height="28">
+      <span>SPOTTER <b>VIRTUAL</b></span>
+    </a>
+    <nav aria-label="Seções">
+      <a href="#treinar">Treinar</a>
+      <a href="#evolucao">Evolução</a>
+      <a href="#como-funciona">Como funciona</a>
+    </nav>
+  </div>
+</header>
+
 <main>
-<h1>Acompanhamento de treino</h1>
-<p class="lead muted">Acompanhe as repetições pela câmera e receba feedback por voz durante a série.</p>
-<div class="grid">
-<section class="panel" aria-labelledby="view-title">
-<h2 id="view-title">Monitor de movimento</h2>
-<div class="preview">
-<span class="mode" id="mode">Em espera</span>
-<p id="placeholder">Inicie pela câmera ou rode a demonstração com movimentos simulados.</p>
-<video id="camera" muted playsinline hidden></video>
-<canvas id="drawing" width="960" height="600" aria-label="Visualização das articulações detectadas"></canvas>
-</div>
-<div class="feedback" id="feedback" role="status">Configure sua série para começar.</div>
-<div class="stats">
-<div><small>Repetições</small><output id="reps">0</output></div>
-<div><small>Ângulo</small><output id="angle">—</output></div>
-<div><small>Alertas</small><output id="alerts">0</output></div>
-</div>
-<small id="metric"></small>
-</section>
-<section class="panel" aria-labelledby="series-title">
-<h2 id="series-title">Configurar série</h2>
-<form id="settings" class="controls">
-<label>Exercício<select id="exercise"><option value="squat">Agachamento livre</option><option value="bench">Supino</option><option value="deadlift">Levantamento terra</option></select></label>
-<div class="fields"><label>Carga atual (kg)<input type="number" id="load" min="0" max="500" step="0.5" value="0" required></label>
-<label>Meta de repetições<input type="number" id="target" min="1" max="30" step="1" value="8" required></label></div>
-<p class="muted" id="framing"></p>
-<div class="row"><button type="submit" id="start" class="primary">Ativar câmera</button><button type="button" id="demo">Rodar demonstração</button></div>
-<div class="row"><button type="button" id="finish" disabled>Encerrar série</button><label><input type="checkbox" id="voice" checked> Feedback por voz</label></div>
-<label><input type="checkbox" id="demo-partial" checked> Simular uma repetição parcial</label>
-<div class="result" id="result" hidden aria-live="polite"><h2>Resumo da série</h2><p id="summary"></p></div>
-</form>
-</section>
-</div>
-<section class="panel below" aria-labelledby="history-title">
-<h2 id="history-title">Histórico neste navegador</h2>
-<p class="muted" id="empty">As séries encerradas aparecem aqui.</p>
-<div class="scroll" id="history-wrap" hidden><table><thead><tr><th>Data</th><th>Exercício</th><th>Modo</th><th>Repetições</th><th>Alertas</th><th>Carga</th></tr></thead><tbody id="history"></tbody></table></div>
-<p class="muted" id="storage-note" hidden>O navegador bloqueou o armazenamento. O histórico ficará disponível apenas nesta aba.</p>
-</section>
-<details><summary>Como testar e apresentar</summary>
-<p><b>Sem câmera:</b> abra este arquivo no Chrome ou Edge, selecione um exercício e clique em <b>Rodar demonstração</b>. Com a opção de repetição parcial marcada, a simulação inclui um alerta. A série termina ao atingir a meta. Para comparar a progressão, informe uma carga de exemplo e rode outra série com a opção desmarcada. Para uma apresentação rápida, ajuste a meta para 3.</p>
-<p><b>Com câmera:</b> abra em HTTPS ou em localhost, aceite a permissão e aguarde o carregamento do modelo, que requer internet. Se necessário, use <code>py -m http.server 8000</code> no Windows ou <code>python3 -m http.server 8000</code> no terminal da pasta. Acesse <code>http://localhost:8000/Spotter-Virtual-MVP.html</code>. Faça a demonstração sem carga. A análise ocorre no navegador, sem enviar nem gravar vídeo.</p>
-<p><b>Escopo:</b> a câmera estima articulações e o app aplica limites angulares experimentais. São regras de demonstração, sem validação biomecânica. A carga é informada uma vez por série. A lógica de progressão em kg é ilustrada apenas em séries simuladas.</p>
-</details>
+  <!-- ===== Apresentação da proposta ===== -->
+  <section class="hero wrap" id="inicio">
+    <p class="eyebrow">Saúde e qualidade de vida</p>
+    <h1>Um spotter focado em você, <span>no seu bolso.</span></h1>
+    <p class="lead">O Spotter Virtual usa a câmera do celular para acompanhar a execução do treino, corrige sua postura por voz durante a série e ajusta a carga sozinho. Você só precisa treinar.</p>
+    <div class="hero-actions">
+      <a class="btn primary" href="#treinar">Começar treino</a>
+      <button class="btn" type="button" id="hero-demo">Ver demonstração</button>
+    </div>
+    <ul class="pillars" aria-label="Como o produto funciona">
+      <li>
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="8" r="2"/><path d="M12 10v5l-3 4M12 15l3 4M8 12l4-1 4 1"/></svg>
+        <div><h3>Visão computacional</h3><p>A câmera mapeia ombros, quadril, joelhos e cotovelos e mede os ângulos de cada repetição.</p></div>
+      </li>
+      <li>
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 14v-2a9 9 0 0 1 18 0v2"/><rect x="2" y="14" width="5" height="7" rx="2"/><rect x="17" y="14" width="5" height="7" rx="2"/></svg>
+        <div><h3>Spotter por áudio</h3><p>Avisos de postura, amplitude e ritmo pelo fone, sem você parar a série para olhar a tela.</p></div>
+      </li>
+      <li>
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>
+        <div><h3>Gestão automática</h3><p>Repetições, séries e carga são registradas sozinhas, e a próxima carga é sugerida pelo desempenho.</p></div>
+      </li>
+    </ul>
+  </section>
+
+  <!-- ===== Treino ===== -->
+  <section class="wrap section" id="treinar" aria-labelledby="treinar-title">
+    <div class="section-head">
+      <h2 id="treinar-title">Treinar</h2>
+      <p class="muted">Escolha o exercício, apoie o celular de lado e comece. O Spotter conta, corrige e anota tudo.</p>
+    </div>
+
+    <div class="train-grid">
+      <!-- Monitor -->
+      <section class="panel monitor" aria-label="Monitor de movimento">
+        <div class="stage" id="stage">
+          <video id="camera" muted playsinline hidden></video>
+          <canvas id="drawing" width="960" height="600" aria-label="Esqueleto com as articulações detectadas"></canvas>
+
+          <div class="hud-top">
+            <span class="chip" id="mode">Em espera</span>
+            <span class="chip" id="set-chip" hidden>Série 1 de 3</span>
+          </div>
+          <div class="hud-reps" id="hud-reps" hidden>
+            <output id="reps">0</output><span>/<span id="reps-target">8</span></span>
+          </div>
+
+          <div class="placeholder" id="placeholder">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg>
+            <p>Apoie o celular de lado, a uns 2 a 3 metros, com o corpo inteiro no quadro.</p>
+            <p class="muted small">Sem câmera? Use a demonstração com movimentos simulados.</p>
+          </div>
+
+          <div class="rest" id="rest" hidden>
+            <p class="eyebrow">Descanso</p>
+            <output id="rest-time">0:00</output>
+            <p id="rest-next" class="muted"></p>
+            <div class="row center">
+              <button class="btn primary" type="button" id="skip-rest">Começar agora</button>
+              <button class="btn" type="button" id="end-workout-rest">Encerrar treino</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="cue" id="cue" role="status" aria-live="polite" data-tone="info">
+          <span class="cue-dot" aria-hidden="true"></span>
+          <span id="feedback">Configure sua série para começar.</span>
+        </div>
+
+        <div class="stats">
+          <div><small>Ângulo</small><output id="angle">—</output><small class="muted" id="metric">joelho</small></div>
+          <div><small>Qualidade</small><output id="quality">—</output><small class="muted">reps sem correção</small></div>
+          <div><small>Correções</small><output id="alerts">0</output><small class="muted" id="alerts-detail">postura, amplitude, ritmo</small></div>
+          <div><small>Descida média</small><output id="tempo">—</output><small class="muted">tempo sob tensão</small></div>
+        </div>
+
+        <div class="row live-actions">
+          <button class="btn" type="button" id="finish" disabled>Encerrar série</button>
+          <button class="btn ghost" type="button" id="end-workout" disabled>Encerrar treino</button>
+        </div>
+      </section>
+
+      <!-- Configuração -->
+      <section class="panel setup" aria-labelledby="setup-title">
+        <h3 id="setup-title">Seu treino</h3>
+        <form id="settings" novalidate>
+          <fieldset class="exercise-pick">
+            <legend>Exercício</legend>
+            <label class="ex-card"><input type="radio" name="exercise" value="squat" checked>
+              <span><b>Agachamento livre</b><small>Profundidade, tronco e ritmo</small></span></label>
+            <label class="ex-card"><input type="radio" name="exercise" value="bench">
+              <span><b>Supino</b><small>Amplitude, punho e ritmo</small></span></label>
+            <label class="ex-card"><input type="radio" name="exercise" value="deadlift">
+              <span><b>Levantamento terra</b><small>Extensão e quadril com peito</small></span></label>
+          </fieldset>
+
+          <div class="fields">
+            <label>Carga (kg)
+              <input type="number" id="load" min="0" max="500" step="0.5" value="40" inputmode="decimal" required>
+            </label>
+            <label>Repetições
+              <input type="number" id="target" min="1" max="30" step="1" value="8" inputmode="numeric" required>
+            </label>
+            <label>Séries
+              <input type="number" id="sets" min="1" max="10" step="1" value="3" inputmode="numeric" required>
+            </label>
+            <label>Descanso (s)
+              <input type="number" id="rest-seconds" min="5" max="600" step="5" value="90" inputmode="numeric" required>
+            </label>
+          </div>
+          <p class="badge" id="load-badge" hidden></p>
+          <p class="framing" id="framing"></p>
+
+          <div class="row">
+            <button type="submit" id="start" class="btn primary">Ativar câmera</button>
+            <button type="button" id="demo" class="btn">Rodar demonstração</button>
+          </div>
+
+          <div class="options">
+            <label class="switch"><input type="checkbox" id="voice" checked><span>Correções por voz</span></label>
+            <label class="switch"><input type="checkbox" id="beep" checked><span>Sinais sonoros</span></label>
+            <label>Cenário da demonstração
+              <select id="demo-scenario">
+                <option value="coach">Com correções do Spotter</option>
+                <option value="clean">Execução perfeita</option>
+              </select>
+            </label>
+            <p class="muted small">Na demonstração, o descanso é encurtado para 6 segundos.</p>
+          </div>
+        </form>
+
+        <div class="result" id="result" hidden aria-live="polite">
+          <h3 id="result-title">Resumo do treino</h3>
+          <ul class="set-list" id="set-list"></ul>
+          <div class="next-load" id="next-load"></div>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ===== Evolução ===== -->
+  <section class="wrap section" id="evolucao" aria-labelledby="evolucao-title">
+    <div class="section-head">
+      <h2 id="evolucao-title">Evolução</h2>
+      <p class="muted">Tudo o que o Spotter registrou, sem você digitar nada durante o treino.</p>
+    </div>
+    <div class="panel">
+      <div class="tabs" role="tablist" aria-label="Exercício" id="evo-tabs">
+        <button role="tab" type="button" data-ex="squat" aria-selected="true">Agachamento</button>
+        <button role="tab" type="button" data-ex="bench" aria-selected="false">Supino</button>
+        <button role="tab" type="button" data-ex="deadlift" aria-selected="false">Terra</button>
+      </div>
+      <div class="kpis" id="kpis"></div>
+      <div class="chart" id="chart" aria-label="Gráfico de carga por treino"></div>
+      <div class="empty" id="evo-empty" hidden>
+        <p>Nenhum treino registrado neste exercício ainda.</p>
+        <button class="btn" type="button" id="seed">Carregar exemplo de evolução</button>
+      </div>
+      <h3 class="table-title">Histórico</h3>
+      <div class="scroll" id="history-wrap" hidden>
+        <table>
+          <thead><tr><th>Data</th><th>Exercício</th><th>Modo</th><th>Séries</th><th>Reps</th><th>Carga</th><th>Qualidade</th><th>Próxima</th></tr></thead>
+          <tbody id="history"></tbody>
+        </table>
+      </div>
+      <p class="muted" id="empty">Os treinos encerrados aparecem aqui.</p>
+      <div class="row history-actions">
+        <button class="btn ghost small" type="button" id="export">Exportar CSV</button>
+        <button class="btn ghost small" type="button" id="clear">Limpar histórico</button>
+      </div>
+      <p class="muted small" id="storage-note" hidden>O navegador bloqueou o armazenamento. O histórico fica disponível só nesta aba.</p>
+    </div>
+  </section>
+
+  <!-- ===== Proposta ===== -->
+  <section class="wrap section" id="como-funciona" aria-labelledby="como-title">
+    <div class="section-head">
+      <h2 id="como-title">Por que o Spotter Virtual</h2>
+      <p class="muted">Quem treina sozinho não tem ninguém para validar a execução e ainda perde o foco digitando cargas no celular.</p>
+    </div>
+
+    <ol class="timeline">
+      <li><span>Passado</span><p>Fichas de papel, revistas genéricas e orientação só presencial.</p></li>
+      <li><span>Presente</span><p>Apps que funcionam como bloco de notas e academias lotadas, com pouco acompanhamento.</p></li>
+      <li class="now"><span>Spotter Virtual</span><p>Análise do movimento em tempo real, correção por áudio e carga ajustada pelo desempenho.</p></li>
+    </ol>
+
+    <div class="benefits">
+      <article class="panel"><h3>Segurança</h3><p>Avisos de postura durante a série ajudam a corrigir o movimento antes que o erro vire hábito.</p></article>
+      <article class="panel"><h3>Hipertrofia</h3><p>Amplitude completa e descida controlada aumentam o tempo sob tensão de cada repetição.</p></article>
+      <article class="panel"><h3>Foco</h3><p>Contagem, séries, descanso e carga ficam por conta do app. Sua atenção fica no esforço e na respiração.</p></article>
+    </div>
+
+    <div class="panel scope">
+      <h3>O que o MVP já faz</h3>
+      <ul class="checks">
+        <li>Monitora os três exercícios de maior complexidade: agachamento livre, supino e levantamento terra.</li>
+        <li>Roda com a câmera do próprio celular ou notebook, sem hardware extra.</li>
+        <li>Analisa o vídeo no próprio aparelho: nada é gravado nem enviado a servidores.</li>
+        <li>Corrige por voz: amplitude parcial, inclinação do tronco, punho desalinhado, quadril subindo antes do peito e descida rápida.</li>
+        <li>Controla séries e descanso e sugere a carga da próxima série e do próximo treino.</li>
+      </ul>
+      <p class="muted small">Os limites de ângulo são experimentais e ainda precisam de validação biomecânica. As sugestões de carga não substituem a orientação de um profissional de educação física.</p>
+    </div>
+
+    <details class="panel howto">
+      <summary>Como testar e apresentar</summary>
+      <p><b>Demonstração sem câmera:</b> escolha o exercício e clique em <b>Rodar demonstração</b>. No cenário <i>Com correções do Spotter</i>, a primeira repetição é parcial e a segunda tem um erro de postura, para mostrar os avisos. No cenário <i>Execução perfeita</i>, o Spotter sugere aumentar a carga ao final. Para uma apresentação rápida, use 4 repetições e 2 séries.</p>
+      <p><b>Câmera ao vivo:</b> abra pelo link HTTPS do GitHub Pages ou por <code>localhost</code>, permita a câmera e aguarde o modelo carregar (precisa de internet). Para rodar localmente: <code>python3 -m http.server 8000</code> na pasta do projeto e acesse <code>http://localhost:8000</code>. Faça o teste sem carga.</p>
+    </details>
+
+    <footer class="team">
+      <p><b>Equipe</b> Bruno Vinicius Lira de Almeida · Paulo César Santos de Vasconcelos · Carlos Wagner Farias da Fonseca</p>
+      <p class="muted small">Protótipo acadêmico · Gestão de Produtos</p>
+    </footer>
+  </section>
 </main>
-<script>
-'use strict';
-const byId = id => document.getElementById(id);
-const ui = Object.fromEntries(['mode','placeholder','camera','drawing','feedback','reps','angle','alerts','metric','settings','demo-partial','exercise','load','target','framing','start','demo','finish','voice','result','summary','empty','history-wrap','history','storage-note'].map(id => [id,byId(id)]));
-const context = ui.drawing.getContext('2d');
-const exercises = {
-  squat: { name:'Agachamento livre', joint:'joelho', ids:[23,25,27], enter:108, exit:155, partial:136, order:['exit','enter'], framing:'Posicione a câmera de lado. Quadril, joelho e tornozelo devem aparecer.' },
-  bench: { name:'Supino', joint:'cotovelo', ids:[11,13,15], enter:102, exit:150, partial:130, order:['exit','enter'], framing:'Enquadre ombro, cotovelo e punho de um lado do corpo.' },
-  deadlift: { name:'Levantamento terra', joint:'quadril', ids:[11,23,25], enter:119, exit:155, partial:140, order:['enter','exit'], framing:'Posicione a câmera de lado. Ombro, quadril e joelho devem aparecer.' }
-};
-const edges = [[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24],[23,25],[25,27],[24,26],[26,28]];
-const historyKey = 'spotter-virtual-mvp-v1';
-let history = [];
-let session = null;
-let modelPromise;
 
-try {
-  const saved = JSON.parse(localStorage.getItem(historyKey) || '[]');
-  if (Array.isArray(saved)) history = saved;
-} catch {
-  ui['storage-note'].hidden = false;
-}
-
-function renderHistory() {
-  ui.history.replaceChildren();
-  ui.empty.hidden = history.length > 0;
-  ui['history-wrap'].hidden = history.length === 0;
-  for (const entry of history) {
-    const row = ui.history.insertRow();
-    const values = [entry.when, entry.exercise, entry.mode, entry.reps, entry.alerts, entry.load + ' kg'];
-    for (const value of values) row.insertCell().textContent = value;
-  }
-}
-
-function updateExercise() {
-  const config = exercises[ui.exercise.value];
-  ui.framing.textContent = config.framing;
-  ui.metric.textContent = 'Ângulo estimado do ' + config.joint + ' nas articulações visíveis.';
-}
-function updateUI() {
-  for (const control of [ui.exercise,ui.load,ui.target,ui.start,ui.demo,ui['demo-partial']]) control.disabled = Boolean(session);
-  ui.finish.disabled = !session;
-  ui.finish.textContent = session?.ready ? 'Encerrar série' : session ? 'Cancelar' : 'Encerrar série';
-  ui.mode.textContent = session?.mode || 'Em espera';
-  ui.placeholder.hidden = Boolean(session?.ready);
-}
-function speak(message) {
-  if (!ui.voice.checked || !('speechSynthesis' in window)) return;
-  speechSynthesis.cancel();
-  const voice = new SpeechSynthesisUtterance(message);
-  voice.lang = 'pt-BR';
-  speechSynthesis.speak(voice);
-}
-function feedback(message, audio = false) {
-  if (ui.feedback.textContent !== message) ui.feedback.textContent = message;
-  if (audio) speak(message);
-}
-function begin(mode) {
-  if (session || !ui.settings.reportValidity()) return null;
-  session = {
-    mode, config:exercises[ui.exercise.value], load:ui.load.valueAsNumber, target:ui.target.valueAsNumber,
-    reps:0, alerts:0, phase:'waiting', excursion:false, lastAlert:-Infinity
-  };
-  ui.reps.value = 0;
-  ui.alerts.value = 0;
-  ui.angle.value = '—';
-  ui.result.hidden = true;
-  updateUI();
-  return session;
-}
-function stop(current) {
-  cancelAnimationFrame(current.frame);
-  current.stream?.getTracks().forEach(track => track.stop());
-  ui.camera.pause();
-  ui.camera.srcObject = null;
-  ui.camera.hidden = true;
-  context.clearRect(0,0,ui.drawing.width,ui.drawing.height);
-  ui.angle.value = '—';
-  session = null;
-  updateUI();
-}
-function finish(current) {
-  if (current !== session) return;
-  stop(current);
-  if (!current.ready) {
-    feedback('Inicialização cancelada.');
-    return;
-  }
-  const { config, mode, reps, target, alerts, load } = current;
-  feedback('Série encerrada.', true);
-  const progress = reps >= target && alerts === 0 && load > 0 ? Math.min(load + 0.5,500) : load;
-  let next = ' Revise a carga da próxima série com seu instrutor.';
-  if (mode === 'Simulação') {
-    next = ' Carga no exemplo de progressão: ' + progress.toLocaleString('pt-BR') + ' kg.';
-  }
-  ui.summary.textContent = reps + ' de ' + target + ' repetições · ' + alerts + ' alerta(s).' + next;
-  ui.result.hidden = false;
-  history.unshift({ when:new Date().toLocaleString('pt-BR'), exercise:config.name, mode, reps, alerts, load });
-  history = history.slice(0,20);
-  try {
-    localStorage.setItem(historyKey,JSON.stringify(history));
-  } catch {
-    ui['storage-note'].hidden = false;
-  }
-  renderHistory();
-}
-
-function updateMovement(current, degrees, now) {
-  const { config } = current;
-  const [start,end] = config.order;
-  let position = 'middle';
-  if (degrees >= config.exit) position = 'exit';
-  if (degrees <= config.enter) position = 'enter';
-  if (current.phase === 'waiting') {
-    if (position === start) {
-      current.phase = 'outbound';
-      feedback('Movimento detectado. Inicie a repetição.');
-    }
-    return;
-  }
-  if (current.phase === 'outbound') {
-    const extendedStart = start === 'exit';
-    current.excursion ||= extendedStart ? degrees <= config.partial : degrees >= config.partial;
-    if (position === end) {
-      current.phase = 'returning';
-      return;
-    }
-    if (position === start && current.excursion) {
-      current.excursion = false;
-      current.alerts++;
-      ui.alerts.value = current.alerts;
-      const allowAudio = now - current.lastAlert >= 2400;
-      if (allowAudio) current.lastAlert = now;
-      feedback('Amplitude parcial detectada.', allowAudio);
-    }
-    return;
-  }
-  if (position === start) {
-    current.phase = 'outbound';
-    current.excursion = false;
-    current.reps++;
-    ui.reps.value = current.reps;
-    if (current.reps === current.target) {
-      finish(current);
-      return;
-    }
-    feedback('Repetição ' + current.reps + ' registrada.');
-  }
-}
-function visible(point) {
-  return point && (point.visibility ?? 1) >= 0.55 &&
-    point.x >= 0 && point.x <= 1 && point.y >= 0 && point.y <= 1;
-}
-function renderPose(current, landmarks, width, height, now) {
-  const canvas = ui.drawing;
-  if (canvas.width !== width || canvas.height !== height) {
-    canvas.width = width;
-    canvas.height = height;
-  }
-  context.clearRect(0,0,width,height);
-  if (current.mode === 'Simulação') drawDemoEquipment(ui.exercise.value,landmarks);
-  context.strokeStyle = '#d7fa70';
-  context.fillStyle = '#f3f5ee';
-  context.lineWidth = Math.max(2,width / 240);
-  for (const [a,b] of edges) {
-    const left = landmarks[a], right = landmarks[b];
-    if (!visible(left) || !visible(right)) continue;
-    context.beginPath();
-    context.moveTo(left.x * width, left.y * height);
-    context.lineTo(right.x * width, right.y * height);
-    context.stroke();
-  }
-  if (current.mode === 'Simulação') {
-    const head = landmarks[0];
-    const shoulder = landmarks[11];
-    context.beginPath();
-    context.moveTo(shoulder.x*width,shoulder.y*height);
-    context.lineTo(head.x*width,head.y*height);
-    context.stroke();
-  }
-  for (const [index,point] of landmarks.entries()) {
-    if (!visible(point)) continue;
-    context.beginPath();
-    context.arc(point.x * width,point.y * height,current.mode === 'Simulação' && index === 0 ? 21 : Math.max(3,width / 180),0,Math.PI * 2);
-    context.fill();
-  }
-
-  const { ids } = current.config;
-  const candidates = [ids,ids.map(id => id + 1)].map(side => side.map(id => landmarks[id]));
-  const reliable = candidates.filter(points => points.every(visible));
-  const quality = points => Math.min(...points.map(point => point.visibility ?? 1));
-  reliable.sort((a,b) => quality(b) - quality(a));
-  if (!reliable.length) {
-    ui.angle.value = '—';
-    current.phase = 'waiting';
-    current.excursion = false;
-    current.smoothed = undefined;
-    feedback('Ajuste o enquadramento para mostrar as articulações.');
-    return;
-  }
-  const [a,b,c] = reliable[0];
-  const x1 = (a.x - b.x) * width, y1 = (a.y - b.y) * height;
-  const x2 = (c.x - b.x) * width, y2 = (c.y - b.y) * height;
-  if (Math.min(Math.hypot(x1,y1),Math.hypot(x2,y2)) < 4) {
-    ui.angle.value = '—';
-    current.phase = 'waiting';
-    current.excursion = false;
-    current.smoothed = undefined;
-    feedback('Mostre as articulações de lado para estimar o ângulo.');
-    return;
-  }
-  const degrees = Math.atan2(Math.abs(x1*y2 - y1*x2),x1*x2 + y1*y2) * 180 / Math.PI;
-  current.smoothed = current.smoothed === undefined ? degrees : current.smoothed * 0.45 + degrees * 0.55;
-  ui.angle.value = Math.round(current.smoothed) + '°';
-  updateMovement(current,current.smoothed,now);
-}
-
-function simulatedPose(kind, degrees) {
-  const radians = Math.PI / 180;
-  const bend = (180 - degrees) * radians;
-  const pose = [];
-  const set = (id, x, y) => { pose[id] = {x:x/960, y:y/600, visibility:1}; };
-  const offset = (id, from, x, y) => set(id, pose[from].x * 960 + x, pose[from].y * 600 + y);
-
-  if (kind === 'bench') {
-    // Bench stays fixed. The elbow drops toward the feet while the forearm stays upright.
-    set(11,390,340);
-    set(23,552,355);
-    set(25,625,366);
-    set(27,595,507);
-    offset(13,11,88*Math.sin(bend),-88*Math.cos(bend));
-    offset(15,13,0,-85);
-    set(0,342,335);
-  } else if (kind === 'deadlift') {
-    // Split hip flexion between the thigh and torso. The hips move down and back.
-    const torsoTilt = bend * 0.60;
-    const thighTilt = bend - torsoTilt;
-    const shinTilt = bend * 0.21;
-    set(27,480,507);
-    offset(25,27,120*Math.sin(shinTilt),-120*Math.cos(shinTilt));
-    offset(23,25,-127*Math.sin(thighTilt),-127*Math.cos(thighTilt));
-    offset(11,23,154*Math.sin(torsoTilt),-154*Math.cos(torsoTilt));
-    const barX = 535;
-    const armDrop = Math.sqrt(212**2 - (barX - pose[11].x*960)**2);
-    set(15,barX,pose[11].y*600 + armDrop);
-    set(13,(pose[11].x*960 + barX)/2,pose[11].y*600 + armDrop/2);
-    offset(0,11,40*Math.sin(torsoTilt) + 5,-40*Math.cos(torsoTilt));
-  } else {
-    // Feet stay planted. The knees move forward and the hips move back and down.
-    const shinTilt = bend * 0.26;
-    const thighTilt = bend - shinTilt;
-    const torsoTilt = bend * 0.46;
-    set(27,500,507);
-    offset(25,27,122*Math.sin(shinTilt),-122*Math.cos(shinTilt));
-    offset(23,25,-132*Math.sin(thighTilt),-132*Math.cos(thighTilt));
-    offset(11,23,154*Math.sin(torsoTilt),-154*Math.cos(torsoTilt));
-    offset(13,11,-43,59);
-    offset(15,11,-16,3);
-    offset(0,11,38*Math.sin(torsoTilt) + 6,-38*Math.cos(torsoTilt));
-  }
-  return pose;
-}
-
-function drawDemoEquipment(kind, pose) {
-  const x = id => pose[id].x * 960;
-  const y = id => pose[id].y * 600;
-  context.fillStyle = '#657282';
-  context.fillRect(220,525,520,3);
-  context.fillStyle = '#c3ccd5';
-  context.fillRect(x(27)-14,513,49,12);
-
-  if (kind === 'bench') {
-    context.fillStyle = '#657282';
-    context.fillRect(303,371,290,13);
-    context.fillRect(329,384,12,141);
-    context.fillRect(552,384,12,141);
-  }
-
-  // The visible end of the bar follows the grip in the side view.
-  const plateX = x(15);
-  const plateY = y(15);
-  context.fillStyle = '#576678';
-  context.beginPath();
-  context.arc(plateX,plateY,kind === 'deadlift' ? 54 : 20,0,Math.PI*2);
-  context.fill();
-}
-
-function startDemo() {
-  const current = begin('Simulação');
-  if (!current) return;
-  current.ready = true;
-  updateUI();
-  feedback('Demonstração iniciada.', true);
-  const config = current.config;
-  const high = 174;
-  const low = config === exercises.deadlift ? 60 : config.enter - 19;
-  const endpoints = config.order[0] === 'exit' ? [high,low] : [low,high];
-  const partial = (config.partial + config[config.order[1]]) / 2;
-  const includePartial = ui['demo-partial'].checked;
-  const start = performance.now();
-  function frame(now) {
-    if (session !== current) return;
-    const elapsed = Math.max(0,now-start-350);
-    const cycle = Math.floor(elapsed / 1600);
-    const ratio = (elapsed % 1600) / 1600;
-    const travel = ratio < 0.1 || ratio >= 0.9 ? 0 : (1 - Math.cos((ratio-0.1)/0.8*2*Math.PI))/2;
-    const degrees = endpoints[0] + ((includePartial && cycle === 0 ? partial : endpoints[1])-endpoints[0])*travel;
-    renderPose(current,simulatedPose(ui.exercise.value,degrees),960,600,now);
-    if (session === current) current.frame = requestAnimationFrame(frame);
-  }
-  current.frame = requestAnimationFrame(frame);
-}
-
-function loadModel() {
-  if (!modelPromise) {
-    const base = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21';
-    modelPromise = (async () => {
-      const { FilesetResolver,PoseLandmarker } = await import(base + '/vision_bundle.mjs');
-      const vision = await FilesetResolver.forVisionTasks(base + '/wasm');
-      return PoseLandmarker.createFromOptions(vision,{
-        baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task'},
-        runningMode:'VIDEO', numPoses:1
-      });
-    })().catch(error => { modelPromise = undefined; throw error; });
-  }
-  return modelPromise;
-}
-async function startCamera(event) {
-  event.preventDefault();
-  const current = begin('Câmera ao vivo');
-  if (!current) return;
-  if (!navigator.mediaDevices?.getUserMedia) {
-    stop(current);
-    feedback('Abra em HTTPS ou localhost para acessar a câmera. A simulação já está disponível.');
-    return;
-  }
-  feedback('Autorize o acesso à câmera no navegador.');
-  let stage = 'camera';
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:640},height:{ideal:480}}
-    });
-    if (session !== current) {
-      stream.getTracks().forEach(track => track.stop());
-      return;
-    }
-    current.stream = stream;
-    feedback('Carregando o modelo de pose. Aguarde alguns segundos.');
-    stage = 'model';
-    let timeout;
-    const model = await Promise.race([loadModel(),new Promise((_,reject) => {
-      timeout = setTimeout(() => reject(new Error('Model timeout')),25000);
-    })]).finally(() => clearTimeout(timeout));
-    if (session !== current) return;
-
-    stage = 'camera';
-    ui.camera.srcObject = stream;
-    await ui.camera.play();
-    if (session !== current) return;
-    ui.camera.hidden = false;
-    current.ready = true;
-    updateUI();
-    feedback('Posicione-se de lado, com as articulações visíveis.', true);
-    let previous = -1;
-    let lastFrame = -Infinity;
-    function frame(now) {
-      if (session !== current) return;
-      if (stream.getVideoTracks().every(track => track.readyState === 'ended')) {
-        finish(current);
-        feedback('A câmera foi desconectada. Série encerrada.');
-        return;
-      }
-      try {
-        if (ui.camera.readyState >= 2 && previous !== ui.camera.currentTime && now-lastFrame >= 65) {
-          previous = ui.camera.currentTime;
-          lastFrame = now;
-          const {landmarks} = model.detectForVideo(ui.camera,now);
-          renderPose(current,landmarks[0] || [],ui.camera.videoWidth,ui.camera.videoHeight,now);
-        }
-      } catch {
-        finish(current);
-        feedback('A análise da câmera foi interrompida. A demonstração está disponível.');
-        return;
-      }
-      if (session === current) current.frame = requestAnimationFrame(frame);
-    }
-    current.frame = requestAnimationFrame(frame);
-  } catch (error) {
-    if (session !== current) return;
-    stop(current);
-    if (stage === 'model') {
-      if (error.message === 'Model timeout') modelPromise = undefined;
-      feedback('O modelo não carregou. Verifique a internet ou rode a demonstração.');
-    } else {
-      feedback('Não foi possível abrir a câmera. Confira a permissão, feche outros aplicativos de vídeo ou use a demonstração.');
-    }
-  }
-}
-
-ui.exercise.addEventListener('change',updateExercise);
-ui.settings.addEventListener('submit',startCamera);
-ui.demo.addEventListener('click',startDemo);
-ui.finish.addEventListener('click',() => { if (session) finish(session); });
-ui.voice.addEventListener('change',() => { if (!ui.voice.checked) window.speechSynthesis?.cancel(); });
-window.addEventListener('pagehide',() => { if (session) stop(session); });
-updateExercise();
-renderHistory();
-</script>
+<script src="js/exercises.js"></script>
+<script src="js/geometry.js"></script>
+<script src="js/tracker.js"></script>
+<script src="js/progression.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/simulator.js"></script>
+<script src="js/renderer.js"></script>
+<script src="js/camera.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/app.js"></script>
 </body>
 </html>
